@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Symptom Analysis</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>AI Symptom Analysis</h1>
+
+        <!-- Step 1: Vitals Form -->
+        <div id="vitals-section">
+            <h2>Patient Vitals</h2>
+            <form id="vitals-form">
+                <div class="form-group">
+                    <label>Height (cm):</label>
+                    <input type="number" id="height" required>
+                </div>
+                <div class="form-group">
+                    <label>Gender:</label>
+                    <select id="gender" required>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Age:</label>
+                    <input type="number" id="age" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight (kg):</label>
+                    <input type="number" id="weight" required>
+                </div>
+                <div class="form-group">
+                    <label>Temperature (°F):</label>
+                    <input type="number" step="0.1" id="temperature" required>
+                </div>
+                <div class="form-group">
+                    <label>SpO2 (%):</label>
+                    <input type="number" id="spo2" required>
+                </div>
+                <div class="form-group">
+                    <label>Heart Rate (bpm):</label>
+                    <input type="number" id="heartrate" required>
+                </div>
+                <button type="button" id="next-btn">Next: Select Symptoms</button>
+            </form>
+        </div>
+
+        <!-- Step 2: Symptom Selection (Hidden initially) -->
+        <div id="symptoms-section" class="hidden">
+            <h2>SELECT YOUR SYMPTOMS</h2>
+            
+            <div class="symptom-category">
+                <h3>Skin Symptoms</h3>
+                <!-- Simplified for demo -->
+                <select id="skin-symptoms" multiple>
+                    <option value="Rash">Rash</option>
+                    <option value="Itching">Itching</option>
+                    <option value="Redness">Redness</option>
+                </select>
+            </div>
+
+            <h3>BODY LIST</h3>
+            <div class="body-list">
+                <div class="body-part" data-part="Head">Head</div>
+                <div class="symptoms-list hidden" id="symptoms-Head">
+                    <label><input type="checkbox" value="Headache"> Headache</label>
+                    <label><input type="checkbox" value="Dizziness"> Dizziness</label>
+                    <label><input type="checkbox" value="Hair Loss"> Hair Loss</label>
+                </div>
+
+                <div class="body-part" data-part="Neck">Neck</div>
+                <div class="symptoms-list hidden" id="symptoms-Neck">
+                    <label><input type="checkbox" value="Sore Throat"> Sore Throat</label>
+                    <label><input type="checkbox" value="Neck Pain"> Neck Pain</label>
+                    <label><input type="checkbox" value="Swollen Glands"> Swollen Glands</label>
+                </div>
+
+                <div class="body-part" data-part="Chest">Chest</div>
+                <div class="symptoms-list hidden" id="symptoms-Chest">
+                    <label><input type="checkbox" value="Chest Pain"> Chest Pain</label>
+                    <label><input type="checkbox" value="Cough"> Cough</label>
+                    <label><input type="checkbox" value="Shortness of Breath"> Shortness of Breath</label>
+                </div>
+
+                <div class="body-part" data-part="Arms">Arms</div>
+                <div class="symptoms-list hidden" id="symptoms-Arms">
+                    <label><input type="checkbox" value="Arm Pain"> Arm Pain</label>
+                    <label><input type="checkbox" value="Numbness"> Numbness</label>
+                </div>
+
+                <div class="body-part" data-part="Abdomen">Abdomen</div>
+                <div class="symptoms-list hidden" id="symptoms-Abdomen">
+                    <label><input type="checkbox" value="Stomach Ache"> Stomach Ache</label>
+                    <label><input type="checkbox" value="Nausea"> Nausea</label>
+                    <label><input type="checkbox" value="Vomiting"> Vomiting</label>
+                </div>
+                
+                <div class="body-part" data-part="Pelvis">Pelvis</div>
+                <div class="symptoms-list hidden" id="symptoms-Pelvis">
+                    <label><input type="checkbox" value="Pelvic Pain"> Pelvic Pain</label>
+                    <label><input type="checkbox" value="Urinary Issues"> Urinary Issues</label>
+                </div>
+
+                <div class="body-part" data-part="Back">Back</div>
+                <div class="symptoms-list hidden" id="symptoms-Back">
+                    <label><input type="checkbox" value="Back Pain"> Back Pain</label>
+                    <label><input type="checkbox" value="Stiffness"> Stiffness</label>
+                </div>
+
+                <div class="body-part" data-part="Buttocks">Buttocks</div>
+                <div class="symptoms-list hidden" id="symptoms-Buttocks">
+                    <label><input type="checkbox" value="Pain in Buttocks"> Pain in Buttocks</label>
+                </div>
+
+                <div class="body-part" data-part="Legs">Legs</div>
+                <div class="symptoms-list hidden" id="symptoms-Legs">
+                    <label><input type="checkbox" value="Leg Pain"> Leg Pain</label>
+                    <label><input type="checkbox" value="Swelling"> Swelling</label>
+                    <label><input type="checkbox" value="Knee Pain"> Knee Pain</label>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="submit-btn" class="primary-btn">Submit Symptoms</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Results -->
+        <div id="results-section" class="hidden">
+            <h2>Analysis Result</h2>
+            <div id="loading" class="hidden">Analyzing...</div>
+            <pre id="output"></pre>
+            <button id="restart-btn">Start Over</button>
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
