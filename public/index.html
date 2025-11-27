@@ -3,142 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Symptom Analysis</title>
+    <title>AI Health Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="container">
-        <h1>AI Symptom Analysis</h1>
-
-        <!-- Step 1: Vitals Form -->
-        <div id="vitals-section">
-            <h2>Patient Vitals</h2>
-            <form id="vitals-form">
-                <div class="form-group">
-                    <label>Height (cm):</label>
-                    <input type="number" id="height" required>
-                </div>
-                <div class="form-group">
-                    <label>Gender:</label>
-                    <select id="gender" required>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Age:</label>
-                    <input type="number" id="age" required>
-                </div>
-                <div class="form-group">
-                    <label>Weight (kg):</label>
-                    <input type="number" id="weight" required>
-                </div>
-                <div class="form-group">
-                    <label>Temperature (°F):</label>
-                    <input type="number" step="0.1" id="temperature" required>
-                </div>
-                <div class="form-group">
-                    <label>SpO2 (%):</label>
-                    <input type="number" id="spo2" required>
-                </div>
-                <div class="form-group">
-                    <label>Heart Rate (bpm):</label>
-                    <input type="number" id="heartrate" required>
-                </div>
-                <button type="button" id="next-btn">Next: Select Symptoms</button>
-            </form>
-        </div>
-
-        <!-- Step 2: Symptom Selection (Hidden initially) -->
-        <div id="symptoms-section" class="hidden">
-            <h2>SELECT YOUR SYMPTOMS</h2>
-            
-            <div class="symptom-category">
-                <h3>Skin Symptoms</h3>
-                <!-- Simplified for demo -->
-                <select id="skin-symptoms" multiple>
-                    <option value="Rash">Rash</option>
-                    <option value="Itching">Itching</option>
-                    <option value="Redness">Redness</option>
-                </select>
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-heart-pulse"></i> AI Health
             </div>
+            <div class="progress-bar">
+                <div class="step active" id="step-1-indicator">1</div>
+                <div class="line"></div>
+                <div class="step" id="step-2-indicator">2</div>
+                <div class="line"></div>
+                <div class="step" id="step-3-indicator">3</div>
+            </div>
+        </header>
 
-            <h3>BODY LIST</h3>
-            <div class="body-list">
-                <div class="body-part" data-part="Head">Head</div>
-                <div class="symptoms-list hidden" id="symptoms-Head">
-                    <label><input type="checkbox" value="Headache"> Headache</label>
-                    <label><input type="checkbox" value="Dizziness"> Dizziness</label>
-                    <label><input type="checkbox" value="Hair Loss"> Hair Loss</label>
-                </div>
-
-                <div class="body-part" data-part="Neck">Neck</div>
-                <div class="symptoms-list hidden" id="symptoms-Neck">
-                    <label><input type="checkbox" value="Sore Throat"> Sore Throat</label>
-                    <label><input type="checkbox" value="Neck Pain"> Neck Pain</label>
-                    <label><input type="checkbox" value="Swollen Glands"> Swollen Glands</label>
-                </div>
-
-                <div class="body-part" data-part="Chest">Chest</div>
-                <div class="symptoms-list hidden" id="symptoms-Chest">
-                    <label><input type="checkbox" value="Chest Pain"> Chest Pain</label>
-                    <label><input type="checkbox" value="Cough"> Cough</label>
-                    <label><input type="checkbox" value="Shortness of Breath"> Shortness of Breath</label>
-                </div>
-
-                <div class="body-part" data-part="Arms">Arms</div>
-                <div class="symptoms-list hidden" id="symptoms-Arms">
-                    <label><input type="checkbox" value="Arm Pain"> Arm Pain</label>
-                    <label><input type="checkbox" value="Numbness"> Numbness</label>
-                </div>
-
-                <div class="body-part" data-part="Abdomen">Abdomen</div>
-                <div class="symptoms-list hidden" id="symptoms-Abdomen">
-                    <label><input type="checkbox" value="Stomach Ache"> Stomach Ache</label>
-                    <label><input type="checkbox" value="Nausea"> Nausea</label>
-                    <label><input type="checkbox" value="Vomiting"> Vomiting</label>
+        <main>
+            <!-- Step 1: Vitals Form -->
+            <section id="vitals-section" class="fade-in">
+                <div class="section-header">
+                    <h2>Let's check your vitals</h2>
+                    <p>Please provide your basic health metrics for accurate analysis.</p>
                 </div>
                 
-                <div class="body-part" data-part="Pelvis">Pelvis</div>
-                <div class="symptoms-list hidden" id="symptoms-Pelvis">
-                    <label><input type="checkbox" value="Pelvic Pain"> Pelvic Pain</label>
-                    <label><input type="checkbox" value="Urinary Issues"> Urinary Issues</label>
+                <form id="vitals-form">
+                    <div class="grid-container">
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-ruler-vertical"></i> Height (cm)</label>
+                            <input type="number" id="height" placeholder="170" required>
+                        </div>
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-venus-mars"></i> Gender</label>
+                            <select id="gender" required>
+                                <option value="" disabled selected>Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-calendar-days"></i> Age</label>
+                            <input type="number" id="age" placeholder="25" required>
+                        </div>
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-weight-scale"></i> Weight (kg)</label>
+                            <input type="number" id="weight" placeholder="70" required>
+                        </div>
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-temperature-half"></i> Temp (°F)</label>
+                            <input type="number" step="0.1" id="temperature" placeholder="98.6" required>
+                        </div>
+                        <div class="input-group">
+                            <label><i class="fa-solid fa-lungs"></i> SpO2 (%)</label>
+                            <input type="number" id="spo2" placeholder="98" required>
+                        </div>
+                        <div class="input-group full-width">
+                            <label><i class="fa-solid fa-heart-pulse"></i> Heart Rate (bpm)</label>
+                            <input type="number" id="heartrate" placeholder="72" required>
+                        </div>
+                    </div>
+                    <button type="button" id="next-btn" class="action-btn">
+                        Next Step <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Step 2: Symptom Selection -->
+            <section id="symptoms-section" class="hidden fade-in">
+                <div class="section-header">
+                    <h2>What's bothering you?</h2>
+                    <p>Select the area and symptoms you are experiencing.</p>
                 </div>
 
-                <div class="body-part" data-part="Back">Back</div>
-                <div class="symptoms-list hidden" id="symptoms-Back">
-                    <label><input type="checkbox" value="Back Pain"> Back Pain</label>
-                    <label><input type="checkbox" value="Stiffness"> Stiffness</label>
+                <div class="symptom-container">
+                    <!-- Sidebar for Body Parts -->
+                    <div class="body-map-sidebar">
+                        <h3>Body Area</h3>
+                        <ul class="body-parts-list">
+                            <li class="body-part-item active" data-target="General">General / Skin</li>
+                            <li class="body-part-item" data-target="Head">Head & Neck</li>
+                            <li class="body-part-item" data-target="Chest">Chest & Back</li>
+                            <li class="body-part-item" data-target="Abdomen">Abdomen & Pelvis</li>
+                            <li class="body-part-item" data-target="Limbs">Arms & Legs</li>
+                        </ul>
+                    </div>
+
+                    <!-- Symptom Selection Area -->
+                    <div class="symptoms-display">
+                        
+                        <!-- General / Skin -->
+                        <div class="symptom-group active" id="group-General">
+                            <h4>General & Skin</h4>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-card"><input type="checkbox" value="Fever"> Fever</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Fatigue"> Fatigue</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Chills"> Chills</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Night Sweats"> Night Sweats</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Rash"> Rash</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Itching"> Itching</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Bruising"> Bruising</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Dry Skin"> Dry Skin</label>
+                            </div>
+                        </div>
+
+                        <!-- Head & Neck -->
+                        <div class="symptom-group" id="group-Head">
+                            <h4>Head & Neck</h4>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-card"><input type="checkbox" value="Headache"> Headache</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Dizziness"> Dizziness</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Vision Changes"> Vision Changes</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Ear Pain"> Ear Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Runny Nose"> Runny Nose</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Sore Throat"> Sore Throat</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Swollen Glands"> Swollen Glands</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Neck Stiffness"> Neck Stiffness</label>
+                            </div>
+                        </div>
+
+                        <!-- Chest & Back -->
+                        <div class="symptom-group" id="group-Chest">
+                            <h4>Chest & Back</h4>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-card"><input type="checkbox" value="Chest Pain"> Chest Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Palpitations"> Palpitations</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Shortness of Breath"> Shortness of Breath</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Cough"> Cough</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Wheezing"> Wheezing</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Upper Back Pain"> Upper Back Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Lower Back Pain"> Lower Back Pain</label>
+                            </div>
+                        </div>
+
+                        <!-- Abdomen & Pelvis -->
+                        <div class="symptom-group" id="group-Abdomen">
+                            <h4>Abdomen & Pelvis</h4>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-card"><input type="checkbox" value="Stomach Pain"> Stomach Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Nausea"> Nausea</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Vomiting"> Vomiting</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Diarrhea"> Diarrhea</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Constipation"> Constipation</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Bloating"> Bloating</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Pelvic Pain"> Pelvic Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Painful Urination"> Painful Urination</label>
+                            </div>
+                        </div>
+
+                        <!-- Limbs -->
+                        <div class="symptom-group" id="group-Limbs">
+                            <h4>Arms & Legs</h4>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-card"><input type="checkbox" value="Joint Pain"> Joint Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Muscle Pain"> Muscle Pain</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Swelling"> Swelling</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Numbness"> Numbness</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Weakness"> Weakness</label>
+                                <label class="checkbox-card"><input type="checkbox" value="Tremors"> Tremors</label>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
-                <div class="body-part" data-part="Buttocks">Buttocks</div>
-                <div class="symptoms-list hidden" id="symptoms-Buttocks">
-                    <label><input type="checkbox" value="Pain in Buttocks"> Pain in Buttocks</label>
+                <div class="button-row">
+                    <button type="button" id="back-btn" class="secondary-btn">Back</button>
+                    <button type="button" id="submit-btn" class="action-btn">Analyze Symptoms</button>
+                </div>
+            </section>
+
+            <!-- Step 3: Results -->
+            <section id="results-section" class="hidden fade-in">
+                <div class="section-header">
+                    <h2>Analysis Complete</h2>
+                    <p>Here is the AI assessment based on your inputs.</p>
                 </div>
 
-                <div class="body-part" data-part="Legs">Legs</div>
-                <div class="symptoms-list hidden" id="symptoms-Legs">
-                    <label><input type="checkbox" value="Leg Pain"> Leg Pain</label>
-                    <label><input type="checkbox" value="Swelling"> Swelling</label>
-                    <label><input type="checkbox" value="Knee Pain"> Knee Pain</label>
+                <div id="loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Consulting medical database...</p>
                 </div>
-            </div>
 
-            <div class="actions">
-                <button id="submit-btn" class="primary-btn">Submit Symptoms</button>
-            </div>
-        </div>
+                <div id="result-card" class="result-card hidden">
+                    <div class="result-icon">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div id="output" class="markdown-body"></div>
+                </div>
 
-        <!-- Step 3: Results -->
-        <div id="results-section" class="hidden">
-            <h2>Analysis Result</h2>
-            <div id="loading" class="hidden">Analyzing...</div>
-            <pre id="output"></pre>
-            <button id="restart-btn">Start Over</button>
-        </div>
-
+                <button id="restart-btn" class="secondary-btn full-width">Start New Assessment</button>
+            </section>
+        </main>
     </div>
 
     <script src="script.js"></script>
