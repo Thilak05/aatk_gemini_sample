@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="user-style.css">
 </head>
 <body>
 
@@ -16,6 +17,10 @@
         <header>
             <div class="logo">
                 <i class="fa-solid fa-heart-pulse"></i> AI Health
+            </div>
+            <div id="user-display" class="user-display hidden">
+                <i class="fa-solid fa-user-circle"></i> <span id="display-name">User</span>
+                <button id="history-btn" class="icon-btn" title="View History"><i class="fa-solid fa-clock-rotate-left"></i></button>
             </div>
             <div class="progress-bar">
                 <div class="step active" id="step-1-indicator">1</div>
@@ -204,6 +209,26 @@
         </main>
     </div>
 
+    <!-- History Modal -->
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Patient History</h2>
+                <button id="close-history" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="user-details-card" class="user-details-card">
+                    <!-- User details will be populated here -->
+                </div>
+                <h3>Past Analyses</h3>
+                <div id="history-list" class="history-list">
+                    <!-- History items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AI Health Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="login.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+
+    <div class="app-container login-container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-heart-pulse"></i> AI Health
+            </div>
+        </header>
+
+        <main class="login-main">
+            <div id="login-view">
+                <h2>Welcome Back</h2>
+                <p>Please login to continue</p>
+
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-mobile">Mobile Login</button>
+                    <button class="tab-btn" id="tab-qr">QR Login</button>
+                </div>
+
+                <!-- Mobile Login Form -->
+                <div id="mobile-login-form" class="form-section">
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-phone"></i> Mobile Number</label>
+                        <input type="tel" id="login-mobile" placeholder="Enter your mobile number">
+                    </div>
+                    <button id="btn-login-mobile" class="action-btn">Login</button>
+                </div>
+
+                <!-- QR Login Scanner -->
+                <div id="qr-login-section" class="form-section hidden">
+                    <div id="reader-login" class="qr-reader"></div>
+                    <p class="hint">Scan your Health QR Code to login</p>
+                </div>
+
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <button id="btn-show-register" class="secondary-btn full-width">Register New User</button>
+            </div>
+
+            <!-- Registration View (Hidden) -->
+            <div id="register-view" class="hidden">
+                <h2>Create Account</h2>
+                <p>Register manually or scan QR</p>
+
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-reg-manual">Manual</button>
+                    <button class="tab-btn" id="tab-reg-qr">Scan QR</button>
+                </div>
+
+                <!-- QR Register Scanner -->
+                <div id="qr-register-section" class="form-section hidden">
+                    <div id="reader-register" class="qr-reader"></div>
+                    <p class="hint">Scan your Health QR Code to auto-fill</p>
+                </div>
+
+                <!-- Manual Register Form -->
+                <form id="register-form" class="form-section">
+                    <div class="grid-container">
+                        <div class="input-group">
+                            <label>Mobile Number *</label>
+                            <input type="tel" id="reg-mobile" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Full Name *</label>
+                            <input type="text" id="reg-name" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Date of Birth (DD-MM-YYYY)</label>
+                            <input type="text" id="reg-dob" placeholder="DD-MM-YYYY">
+                        </div>
+                        <div class="input-group">
+                            <label>Gender</label>
+                            <select id="reg-gender">
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group full-width">
+                            <label>Address</label>
+                            <input type="text" id="reg-address">
+                        </div>
+                        <div class="input-group">
+                            <label>State</label>
+                            <input type="text" id="reg-state">
+                        </div>
+                        <!-- Hidden fields for QR data -->
+                        <input type="hidden" id="reg-hidn">
+                        <input type="hidden" id="reg-hid">
+                    </div>
+                    <button type="submit" class="action-btn">Register</button>
+                </form>
+
+                <button id="btn-back-login" class="secondary-btn full-width" style="margin-top: 10px;">Back to Login</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>
