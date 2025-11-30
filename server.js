@@ -5,7 +5,7 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 app.use(bodyParser.json());
@@ -199,12 +199,7 @@ app.post('/analyze', async (req, res) => {
     }
 });
 
-// Export the app for Netlify Functions
-module.exports = app;
-
-// Only listen if run directly (not imported)
-if (require.main === module) {
-    app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
-    });
-}
+// Start the server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
