@@ -23,6 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    // Logout Logic
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('user_mobile');
+            window.location.href = 'login.html';
+        });
+    }
+
     // Fetch and Display User Data
     async function loadUserData() {
         try {
@@ -215,60 +224,66 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyPartItems[0].click();
     });
 
-    // --- History Modal Logic ---
-    const historyBtn = document.getElementById('history-btn');
-    const historyModal = document.getElementById('history-modal');
-    const closeHistoryBtn = document.getElementById('close-history');
+    // --- Profile Modal Logic ---
+    const profileBtn = document.getElementById('profile-btn');
+    const profileModal = document.getElementById('profile-modal');
+    const closeProfileBtn = document.getElementById('close-profile');
     const historyList = document.getElementById('history-list');
     const userDetailsCard = document.getElementById('user-details-card');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
+
+    let currentUserData = null;
+    let currentHistoryData = [];
 
     function formatDate(dateString) {
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
         return new Date(dateString).toLocaleDateString(undefined, options);
     }
 
-    historyBtn.addEventListener('click', async () => {
+    profileBtn.addEventListener('click', async () => {
         try {
             const response = await fetch(`/history/${userMobile}`);
             if (!response.ok) throw new Error('Failed to fetch history');
             
             const data = await response.json();
-            const user = data.user;
-            const history = data.history;
+            currentUserData = data.user;
+            currentHistoryData = data.history || [];
             
             // Populate User Details
-            if (user) {
-                const genderDisplay = user.gender === 'M' ? 'Male' : (user.gender === 'F' ? 'Female' : 'Other');
+            if (currentUserData) {
+                const genderDisplay = currentUserData.gender === 'M' ? 'Male' : (currentUserData.gender === 'F' ? 'Female' : 'Other');
                 userDetailsCard.innerHTML = `
-                    <p><strong>Name:</strong> ${user.name}</p>
-                    <p><strong>Mobile:</strong> ${user.mobile}</p>
-                    <p><strong>Age:</strong> ${user.age}</p>
+                    <p><strong>Name:</strong> ${currentUserData.name}</p>
+                    <p><strong>Mobile:</strong> ${currentUserData.mobile}</p>
+                    <p><strong>Age:</strong> ${currentUserData.age}</p>
                     <p><strong>Gender:</strong> ${genderDisplay}</p>
                 `;
             }
 
             // Populate History List
             historyList.innerHTML = '';
-            if (!history || history.length === 0) {
+            if (currentHistoryData.length === 0) {
                 historyList.innerHTML = '<p class="text-muted">No past analyses found.</p>';
+                downloadPdfBtn.disabled = true;
+                downloadPdfBtn.style.opacity = '0.5';
             } else {
-                history.forEach(item => {
+                downloadPdfBtn.disabled = false;
+                downloadPdfBtn.style.opacity = '1';
+                
+                currentHistoryData.forEach(item => {
                     const historyItem = document.createElement('div');
                     historyItem.className = 'history-item';
                     
-                    // Parse symptoms if it's a JSON string, otherwise display as is
+                    // Parse symptoms
                     let symptomsDisplay = item.symptoms;
                     try {
                         const symptomsObj = JSON.parse(item.symptoms);
                         if (Array.isArray(symptomsObj)) {
                             symptomsDisplay = symptomsObj.join(', ');
                         } else if (typeof symptomsObj === 'object') {
-                             // Handle if it's stored as { "Head": ["Headache"] } etc.
                              symptomsDisplay = Object.values(symptomsObj).flat().join(', ');
                         }
-                    } catch (e) {
-                        // Not JSON, keep as string
-                    }
+                    } catch (e) {}
 
                     historyItem.innerHTML = `
                         <span class="history-date"><i class="fa-regular fa-calendar"></i> ${formatDate(item.created_at)}</span>
@@ -279,27 +294,108 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            historyModal.classList.remove('hidden');
-            // Small delay to allow display:flex to apply before opacity transition
-            setTimeout(() => historyModal.classList.add('show'), 10);
+            profileModal.classList.remove('hidden');
+            setTimeout(() => profileModal.classList.add('show'), 10);
 
         } catch (error) {
-            console.error('Error fetching history:', error);
-            alert('Could not load history. Please try again.');
+            console.error('Error fetching profile:', error);
+            alert('Could not load profile. Please try again.');
         }
     });
 
-    function closeHistory() {
-        historyModal.classList.remove('show');
-        setTimeout(() => historyModal.classList.add('hidden'), 300); // Wait for transition
+    // PDF Generation
+    downloadPdfBtn.addEventListener('click', () => {
+        if (!currentUserData) return;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(20);
+        doc.setTextColor(37, 99, 235); // Primary Color
+        doc.text("AI Health - Patient Report", 14, 22);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+        // User Details Section
+        doc.setDrawColor(200);
+        doc.line(14, 35, 196, 35);
+        
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text("Patient Details", 14, 45);
+        
+        doc.setFontSize(11);
+        doc.text(`Name: ${currentUserData.name}`, 14, 55);
+        doc.text(`Mobile: ${currentUserData.mobile}`, 14, 62);
+        doc.text(`Age: ${currentUserData.age}`, 100, 55);
+        const genderDisplay = currentUserData.gender === 'M' ? 'Male' : (currentUserData.gender === 'F' ? 'Female' : 'Other');
+        doc.text(`Gender: ${genderDisplay}`, 100, 62);
+
+        // History Table
+        doc.setFontSize(14);
+        doc.text("Medical History", 14, 75);
+
+        const tableData = currentHistoryData.map(item => {
+            let symptomsDisplay = item.symptoms;
+            try {
+                const symptomsObj = JSON.parse(item.symptoms);
+                if (Array.isArray(symptomsObj)) {
+                    symptomsDisplay = symptomsObj.join(', ');
+                } else if (typeof symptomsObj === 'object') {
+                        symptomsDisplay = Object.values(symptomsObj).flat().join(', ');
+                }
+            } catch (e) {}
+
+            // Clean up markdown for PDF (basic cleanup)
+            let diagnosis = item.response_text || '';
+            diagnosis = diagnosis.replace(/\*\*/g, '').replace(/\*/g, '-').replace(/#/g, '');
+
+            // Format Vitals
+            const vitals = [
+                `Temp: ${item.temperature}°F`,
+                `HR: ${item.heartrate} bpm`,
+                `SpO2: ${item.spo2}%`,
+                `Wt: ${item.weight} kg`
+            ].join('\n');
+
+            return [
+                formatDate(item.created_at),
+                vitals,
+                symptomsDisplay,
+                diagnosis
+            ];
+        });
+
+        doc.autoTable({
+            startY: 80,
+            head: [['Date', 'Vitals', 'Symptoms', 'AI Diagnosis']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235] },
+            columnStyles: {
+                0: { cellWidth: 25 },
+                1: { cellWidth: 30 },
+                2: { cellWidth: 40 },
+                3: { cellWidth: 'auto' }
+            }
+        });
+
+        doc.save(`${currentUserData.name}_Health_Report.pdf`);
+    });
+
+    function closeProfile() {
+        profileModal.classList.remove('show');
+        setTimeout(() => profileModal.classList.add('hidden'), 300);
     }
 
-    closeHistoryBtn.addEventListener('click', closeHistory);
+    closeProfileBtn.addEventListener('click', closeProfile);
 
-    // Close on click outside
     window.addEventListener('click', (e) => {
-        if (e.target === historyModal) {
-            closeHistory();
+        if (e.target === profileModal) {
+            closeProfile();
         }
     });
 });

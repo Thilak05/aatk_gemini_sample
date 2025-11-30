@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="user-style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -20,7 +22,8 @@
             </div>
             <div id="user-display" class="user-display hidden">
                 <i class="fa-solid fa-user-circle"></i> <span id="display-name">User</span>
-                <button id="history-btn" class="icon-btn" title="View History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                <button id="profile-btn" class="icon-btn" title="View Profile"><i class="fa-solid fa-id-card"></i></button>
+                <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
             </div>
             <div class="progress-bar">
                 <div class="step active" id="step-1-indicator">1</div>
@@ -209,18 +212,21 @@
         </main>
     </div>
 
-    <!-- History Modal -->
-    <div id="history-modal" class="modal hidden">
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Patient History</h2>
-                <button id="close-history" class="close-btn">&times;</button>
+                <h2>Patient Profile</h2>
+                <button id="close-profile" class="close-btn">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="user-details-card" class="user-details-card">
                     <!-- User details will be populated here -->
                 </div>
-                <h3>Past Analyses</h3>
+                <div class="history-header">
+                    <h3>Medical History</h3>
+                    <button id="download-pdf-btn" class="action-btn small-btn"><i class="fa-solid fa-file-pdf"></i> Download Report</button>
+                </div>
                 <div id="history-list" class="history-list">
                     <!-- History items will be populated here -->
                 </div>
