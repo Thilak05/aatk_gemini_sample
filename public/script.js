@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadUserData();
 
     let collectedVitals = {};
+    let currentDataId = null;
+    let currentSymptoms = [];
 
     // --- Navigation Logic ---
 
@@ -160,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Please select at least one symptom.");
             return;
         }
+        currentSymptoms = selectedSymptoms;
 
         // Move to results
         symptomsSection.classList.add('hidden');
@@ -188,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('result-card').classList.remove('hidden');
             
             if (data.result) {
+                currentDataId = data.dataId;
                 // Simple markdown to HTML conversion for better display
                 let formattedResult = data.result
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
@@ -398,4 +402,130 @@ document.addEventListener('DOMContentLoaded', () => {
             closeProfile();
         }
     });
+
+    // --- Doctor Consultation Logic ---
+    const consultBtn = document.getElementById('consult-btn');
+    const videoModal = document.getElementById('video-modal');
+    const closeVideoBtn = document.getElementById('close-video');
+    const waitingScreen = document.getElementById('waiting-screen');
+    const videoScreen = document.getElementById('video-screen');
+    const endCallBtn = document.getElementById('end-call-btn');
+    
+    let socket = null;
+    let peerConnection = null;
+    let currentDoctorSocket = null;
+
+    consultBtn.addEventListener('click', async () => {
+        // Initialize Socket
+        if (!socket) socket = io();
+
+        videoModal.classList.remove('hidden');
+        setTimeout(() => videoModal.classList.add('show'), 10);
+        
+        // Send Request
+        const userMobile = localStorage.getItem('user_mobile');
+        const userName = localStorage.getItem('user_name') || document.getElementById('display-name').textContent;
+        
+        try {
+            // 1. Create DB Record
+            const res = await fetch('/consult/request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_mobile: userMobile, data_id: currentDataId })
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                // 2. Emit Socket Event
+                socket.emit('patient_request', {
+                    user_mobile: userMobile,
+                    patientName: userName,
+                    symptoms: currentSymptoms.join(', '),
+                    consultationId: data.consultationId
+                });
+            } else {
+                alert('Failed to initiate request. Please try again.');
+                closeVideo();
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Connection error.');
+            closeVideo();
+        }
+
+        // Listen for responses
+        socket.on('no_doctors_available', () => {
+            waitingScreen.innerHTML = `
+                <i class="fa-solid fa-user-doctor-slash fa-3x" style="color: #ef4444; margin-bottom: 20px;"></i>
+                <h3>No Doctors Available</h3>
+                <p>We have sent your report to our admin team. A doctor will contact you shortly.</p>
+                <button onclick="closeVideo()" class="secondary-btn" style="margin-top: 20px;">Close</button>
+            `;
+            
+            // Trigger Email to Admin
+            fetch('/consult/email-admin', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    patientDetails: { name: userName, mobile: userMobile },
+                    report: document.getElementById('output').innerText
+                })
+            });
+        });
+
+        socket.on('request_accepted', (data) => {
+            waitingScreen.classList.add('hidden');
+            videoScreen.classList.remove('hidden');
+            currentDoctorSocket = data.doctorSocketId;
+            startPatientCall();
+        });
+
+        // WebRTC Handlers
+        socket.on('offer', async (data) => {
+            if (!peerConnection) startPatientCall();
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('answer', { target: data.sender, sdp: answer });
+        });
+
+        socket.on('candidate', async (data) => {
+            if (peerConnection) {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
+    });
+
+    async function startPatientCall() {
+        const localVideo = document.getElementById('patient-local-video');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = stream;
+
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        peerConnection = new RTCPeerConnection(configuration);
+
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
+        peerConnection.ontrack = (event) => {
+            document.getElementById('patient-remote-video').srcObject = event.streams[0];
+        };
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.emit('candidate', { target: currentDoctorSocket, candidate: event.candidate });
+            }
+        };
+    }
+
+    function closeVideo() {
+        videoModal.classList.remove('show');
+        setTimeout(() => videoModal.classList.add('hidden'), 300);
+        if (peerConnection) peerConnection.close();
+        // Reload to reset socket state cleanly
+        // location.reload(); 
+    }
+
+    closeVideoBtn.addEventListener('click', closeVideo);
+    endCallBtn.addEventListener('click', closeVideo);
 });

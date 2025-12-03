@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Registration | AI Health Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="doctor-style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card reg-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <i class="fa-solid fa-user-doctor"></i> DocPortal
+                </div>
+                <div class="auth-subtitle">Join our network of medical experts</div>
+            </div>
+            
+            <form id="registerForm">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" class="form-control" placeholder="Dr. John Doe" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" class="form-control" placeholder="doctor@hospital.com" required>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="specialization">Specialization</label>
+                        <input type="text" id="specialization" class="form-control" placeholder="Cardiologist" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_no">Contact Number</label>
+                        <input type="tel" id="contact_no" class="form-control" placeholder="+1 234 567 8900" required>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="hospital">Hospital / Clinic</label>
+                        <input type="text" id="hospital" class="form-control" placeholder="City General Hospital" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location (City)</label>
+                        <input type="text" id="location" class="form-control" placeholder="New York" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender" class="form-control" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn-primary">Create Account</button>
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="index.html">Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                specialization: document.getElementById('specialization').value,
+                contact_no: document.getElementById('contact_no').value,
+                hospital: document.getElementById('hospital').value,
+                location: document.getElementById('location').value,
+                gender: document.getElementById('gender').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const response = await fetch('/doctor/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert('Registration successful! Please login.');
+                    window.location.href = 'index.html';
+                } else {
+                    alert(data.error || 'Registration failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during registration');
+            }
+        });
+    </script>
+</body>
+</html>

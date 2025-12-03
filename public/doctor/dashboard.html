@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Dashboard | AI Health Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="doctor-style.css">
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto; 
+            padding: 30px;
+            border: 1px solid #888;
+            width: 500px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease-out;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .patient-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .patient-table th, .patient-table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .patient-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .patient-table tr:hover {
+            background-color: #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa-solid fa-heart-pulse"></i> DocPortal
+            </div>
+            
+            <nav>
+                <a href="#" class="nav-item active" onclick="showSection('consultations')">
+                    <i class="fa-solid fa-video"></i> Consultations
+                </a>
+                <a href="#" class="nav-item" onclick="showSection('patients')">
+                    <i class="fa-solid fa-user-group"></i> Patients
+                </a>
+            </nav>
+
+            <div class="doctor-profile" onclick="openProfileModal()" style="cursor: pointer;">
+                <div class="avatar" id="doctorInitials">DR</div>
+                <div>
+                    <div style="font-weight: 600; font-size: 0.9rem;" id="doctorNameDisplay">Loading...</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Edit Profile</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Consultations Section -->
+            <div id="consultations-section">
+                <div class="header-bar">
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.5rem;">Live Consultations</h1>
+                        <p style="margin: 4px 0 0 0; color: var(--text-secondary);">Manage patient requests and video calls</p>
+                    </div>
+                    <div class="status-badge">
+                        <div class="status-dot"></div>
+                        Accepting Requests
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <!-- Request List Panel -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span>Patient Queue</span>
+                            <span class="badge" id="queueCount" style="background: #eff6ff; color: #2563eb; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem;">0</span>
+                        </div>
+                        <div class="request-list" id="requestsList">
+                            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                                <i class="fa-solid fa-inbox" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.3;"></i>
+                                <p>No active requests</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Stage Panel -->
+                    <div class="panel">
+                        <div class="consultation-wrapper">
+                            <div class="video-stage" id="videoContainer">
+                                <div class="placeholder-content" id="videoPlaceholder">
+                                    <i class="fa-solid fa-video-slash"></i>
+                                    <h3>No Active Call</h3>
+                                    <p>Select a patient from the queue to start consultation</p>
+                                </div>
+                                <video id="remoteVideo" autoplay playsinline class="hidden" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                <video id="localVideo" autoplay playsinline muted class="hidden" style="position: absolute; bottom: 20px; right: 20px; width: 150px; height: 100px; border-radius: 8px; border: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); object-fit: cover;"></video>
+                            </div>
+
+                            <div class="controls-panel hidden" id="controlsPanel">
+                                <div class="notes-grid">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Patient Symptoms</label>
+                                        <div id="patientSymptoms" style="background: white; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); height: 100px; overflow-y: auto;">
+                                            --
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Doctor's Notes</label>
+                                        <textarea id="consultationNotes" placeholder="Enter diagnosis and prescription..."></textarea>
+                                    </div>
+                                </div>
+                                <button class="action-btn" onclick="endConsultation()">
+                                    <i class="fa-solid fa-check"></i> Complete Consultation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patients Section -->
+            <div id="patients-section" class="hidden">
+                <div class="header-bar">
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.5rem;">Patient History</h1>
+                        <p style="margin: 4px 0 0 0; color: var(--text-secondary);">List of patients you have attended</p>
+                    </div>
+                </div>
+                <div class="panel" style="padding: 20px;">
+                    <table class="patient-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Patient Name</th>
+                                <th>Age/Gender</th>
+                                <th>Symptoms</th>
+                                <th>Diagnosis</th>
+                                <th>Prescription</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patientsTableBody">
+                            <!-- Rows will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeProfileModal()">&times;</span>
+            <h2 style="margin-top: 0;">Edit Profile</h2>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="editName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <input type="text" id="editSpecialization" class="form-control" required>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Hospital</label>
+                        <input type="text" id="editHospital" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" id="editLocation" class="form-control" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Contact No</label>
+                        <input type="text" id="editContact" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="editGender" class="form-control" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- Auth & Init ---
+        const doctorId = localStorage.getItem('doctorId');
+        const doctorName = localStorage.getItem('doctorName');
+
+        if (!doctorId) window.location.href = 'index.html';
+
+        // Display Name
+        document.getElementById('doctorNameDisplay').textContent = doctorName || 'Doctor';
+        if(doctorName) {
+            document.getElementById('doctorInitials').textContent = doctorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        }
+
+        // --- Navigation ---
+        function showSection(sectionId) {
+            document.getElementById('consultations-section').classList.add('hidden');
+            document.getElementById('patients-section').classList.add('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            if (sectionId === 'consultations') {
+                document.getElementById('consultations-section').classList.remove('hidden');
+                document.querySelector('.nav-item:nth-child(1)').classList.add('active');
+            } else if (sectionId === 'patients') {
+                document.getElementById('patients-section').classList.remove('hidden');
+                document.querySelector('.nav-item:nth-child(2)').classList.add('active');
+                loadPatients();
+            }
+        }
+
+        // --- Profile Modal ---
+        const modal = document.getElementById("profileModal");
+
+        async function openProfileModal() {
+            modal.style.display = "block";
+            // Fetch current profile data
+            try {
+                const res = await fetch(`/doctor/profile/${doctorId}`);
+                const data = await res.json();
+                if(res.ok) {
+                    document.getElementById('editName').value = data.name;
+                    document.getElementById('editSpecialization').value = data.specialization;
+                    document.getElementById('editHospital').value = data.hospital;
+                    document.getElementById('editLocation').value = data.location;
+                    document.getElementById('editContact').value = data.contact_no;
+                    document.getElementById('editGender').value = data.gender;
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function closeProfileModal() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updatedData = {
+                name: document.getElementById('editName').value,
+                specialization: document.getElementById('editSpecialization').value,
+                hospital: document.getElementById('editHospital').value,
+                location: document.getElementById('editLocation').value,
+                contact_no: document.getElementById('editContact').value,
+                gender: document.getElementById('editGender').value
+            };
+
+            try {
+                const res = await fetch(`/doctor/profile/${doctorId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                if(res.ok) {
+                    alert('Profile updated successfully');
+                    localStorage.setItem('doctorName', updatedData.name);
+                    document.getElementById('doctorNameDisplay').textContent = updatedData.name;
+                    closeProfileModal();
+                } else {
+                    alert('Failed to update profile');
+                }
+            } catch(e) { console.error(e); }
+        });
+
+        // --- Patients List ---
+        async function loadPatients() {
+            const tbody = document.getElementById('patientsTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading...</td></tr>';
+            
+            try {
+                const res = await fetch(`/doctor/patients/${doctorId}`);
+                const patients = await res.json();
+                
+                tbody.innerHTML = '';
+                if(patients.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No patients attended yet.</td></tr>';
+                    return;
+                }
+
+                patients.forEach(p => {
+                    const row = `
+                        <tr>
+                            <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                            <td>${p.patient_name || 'Anonymous'}</td>
+                            <td>${p.age || '-'} / ${p.gender || '-'}</td>
+                            <td>${p.symptoms ? p.symptoms.substring(0, 30) + '...' : '-'}</td>
+                            <td>${p.diagnosis || '-'}</td>
+                            <td>${p.prescription || '-'}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch(e) {
+                console.error(e);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error loading data</td></tr>';
+            }
+        }
+
+        // --- Socket & WebRTC (Existing Logic) ---
+        const socket = io(); // No auth token used in server yet, so simple connect
+
+        let peerConnection;
+        let currentPatientId = null;
+        const config = {
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        };
+
+        socket.on('connect', () => {
+            console.log('Connected as Doctor');
+            socket.emit('doctor_login', doctorId);
+        });
+
+        socket.on('new_patient_request', (data) => {
+            addRequestToQueue(data);
+        });
+
+        socket.on('request_taken', (data) => {
+            const card = document.getElementById(`req-${data.patientSocketId}`);
+            if (card) {
+                card.remove();
+                updateQueueCount();
+            }
+        });
+
+        socket.on('offer', async (data) => {
+            if (currentPatientId !== data.from) return;
+            
+            peerConnection = new RTCPeerConnection(config);
+            
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.emit('candidate', {
+                        target: currentPatientId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            peerConnection.ontrack = event => {
+                const remoteVideo = document.getElementById('remoteVideo');
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.classList.remove('hidden');
+                document.getElementById('videoPlaceholder').classList.add('hidden');
+            };
+
+            const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            document.getElementById('localVideo').classList.remove('hidden');
+            
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            socket.emit('answer', {
+                target: currentPatientId,
+                answer: answer
+            });
+            
+            document.getElementById('controlsPanel').classList.remove('hidden');
+        });
+
+        socket.on('candidate', async (data) => {
+            if (currentPatientId !== data.from) return;
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            } catch (e) {
+                console.error('Error adding received ice candidate', e);
+            }
+        });
+
+        function addRequestToQueue(data) {
+            const list = document.getElementById('requestsList');
+            const emptyState = list.querySelector('.fa-inbox')?.parentElement;
+            if (emptyState) emptyState.remove();
+
+            const card = document.createElement('div');
+            card.className = 'request-card';
+            card.id = `req-${data.socketId}`;
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h4>${data.patientName || 'Anonymous Patient'}</h4>
+                        <p>${data.symptoms.substring(0, 50)}...</p>
+                    </div>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; width: auto;" onclick="acceptRequest('${data.socketId}', '${data.symptoms.replace(/'/g, "\'")}')">
+                        Accept
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+            updateQueueCount();
+        }
+
+        function updateQueueCount() {
+            const count = document.getElementById('requestsList').children.length;
+            document.getElementById('queueCount').textContent = count;
+        }
+
+        window.acceptRequest = function(socketId, symptoms) {
+            if (currentPatientId) {
+                if(!confirm('End current consultation to accept new one?')) return;
+                endConsultation();
+            }
+
+            currentPatientId = socketId;
+            document.getElementById('patientSymptoms').textContent = symptoms;
+            
+            document.querySelectorAll('.request-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(`req-${socketId}`);
+            if(card) card.classList.add('active');
+
+            socket.emit('accept_request', { patientSocketId: socketId, doctorId: doctorId });
+            
+            document.getElementById('videoPlaceholder').innerHTML = `
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <h3>Connecting...</h3>
+                <p>Waiting for patient connection</p>
+            `;
+        };
+
+        window.endConsultation = function() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo.srcObject) {
+                localVideo.srcObject.getTracks().forEach(track => track.stop());
+                localVideo.srcObject = null;
+            }
+
+            document.getElementById('remoteVideo').classList.add('hidden');
+            document.getElementById('localVideo').classList.add('hidden');
+            document.getElementById('controlsPanel').classList.add('hidden');
+            document.getElementById('videoPlaceholder').classList.remove('hidden');
+            document.getElementById('videoPlaceholder').innerHTML = `
+                <i class="fa-solid fa-video-slash"></i>
+                <h3>No Active Call</h3>
+                <p>Select a patient from the queue to start consultation</p>
+            `;
+
+            if (currentPatientId) {
+                const card = document.getElementById(`req-${currentPatientId}`);
+                if (card) card.remove();
+                updateQueueCount();
+            }
+
+            currentPatientId = null;
+            document.getElementById('consultationNotes').value = '';
+            document.getElementById('patientSymptoms').textContent = '--';
+        };
+    </script>
+</body>
+</html>

@@ -2,13 +2,28 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const mysql = require('mysql2/promise');
+const http = require('http');
+const { Server } = require('socket.io');
+const nodemailer = require('nodemailer');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const port = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 app.use(bodyParser.json());
+
+// Email Transporter
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.SENDER_EMAIL,
+        pass: process.env.SENDER_PASSWORD
+    }
+});
 
 // Database Connection Pool
 const pool = mysql.createPool({
@@ -191,7 +206,7 @@ app.post('/analyze', async (req, res) => {
         const aiQuery = `INSERT INTO ai_response (data_id, response_text) VALUES (?, ?)`;
         await pool.execute(aiQuery, [dataId, text]);
 
-        res.json({ result: text });
+        res.json({ result: text, dataId: dataId });
 
     } catch (error) {
         console.error("Error calling Gemini API:", error);
@@ -200,6 +215,193 @@ app.post('/analyze', async (req, res) => {
 });
 
 // Start the server
-app.listen(port, () => {
+server.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
+});
+
+// --- Socket.IO Logic ---
+const doctors = new Set(); // Track online doctors
+
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    socket.on('doctor_login', (doctorId) => {
+        socket.join('doctors');
+        doctors.add(socket.id);
+        console.log(`Doctor ${doctorId} joined. Online doctors: ${doctors.size}`);
+    });
+
+    socket.on('patient_request', (data) => {
+        // Broadcast to all doctors
+        if (doctors.size === 0) {
+            socket.emit('no_doctors_available');
+            // Trigger email logic here if needed
+        } else {
+            io.to('doctors').emit('new_patient_request', {
+                ...data,
+                socketId: socket.id
+            });
+        }
+    });
+
+    socket.on('accept_request', (data) => {
+        // data: { patientSocketId, doctorId }
+        io.to(data.patientSocketId).emit('request_accepted', { doctorId: data.doctorId, doctorSocketId: socket.id });
+        
+        // Notify other doctors to remove this request from their queue
+        io.to('doctors').emit('request_taken', { patientSocketId: data.patientSocketId });
+    });
+
+    // WebRTC Signaling
+    socket.on('offer', (data) => {
+        io.to(data.target).emit('offer', { sdp: data.sdp, sender: socket.id });
+    });
+
+    socket.on('answer', (data) => {
+        io.to(data.target).emit('answer', { sdp: data.sdp, sender: socket.id });
+    });
+
+    socket.on('candidate', (data) => {
+        io.to(data.target).emit('candidate', { candidate: data.candidate, sender: socket.id });
+    });
+
+    socket.on('disconnect', () => {
+        if (doctors.has(socket.id)) {
+            doctors.delete(socket.id);
+        }
+        console.log('User disconnected:', socket.id);
+    });
+});
+
+// --- Doctor Routes ---
+
+app.post('/doctor/register', async (req, res) => {
+    try {
+        const { name, email, password, specialization, location, hospital, contact_no, gender } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        const query = `INSERT INTO doctors (name, email, password, specialization, location, hospital, contact_no, gender) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        await pool.execute(query, [name, email, hashedPassword, specialization, location, hospital, contact_no, gender]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Registration failed" });
+    }
+});
+
+app.post('/doctor/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const [rows] = await pool.execute('SELECT * FROM doctors WHERE email = ?', [email]);
+        
+        if (rows.length === 0) return res.status(401).json({ error: "Invalid credentials" });
+        
+        const doctor = rows[0];
+        const match = await bcrypt.compare(password, doctor.password);
+        
+        if (match) {
+            res.json({ success: true, doctor: { id: doctor.id, name: doctor.name } });
+        } else {
+            res.status(401).json({ error: "Invalid credentials" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Login failed" });
+    }
+});
+
+// Get Doctor's Patients (History)
+app.get('/doctor/patients/:doctorId', async (req, res) => {
+    try {
+        const { doctorId } = req.params;
+        const query = `
+            SELECT cr.id, cr.created_at, u.name as patient_name, u.age, u.gender, d.symptoms, ar.response_text as diagnosis, dr.doctor_notes, dr.prescription
+            FROM consultation_requests cr
+            JOIN users u ON cr.user_mobile = u.mobile
+            JOIN data d ON cr.data_id = d.id
+            LEFT JOIN ai_response ar ON d.id = ar.data_id
+            LEFT JOIN doctor_responses dr ON cr.id = dr.consultation_id
+            WHERE cr.doctor_id = ? AND cr.status = 'completed'
+            ORDER BY cr.created_at DESC
+        `;
+        const [rows] = await pool.execute(query, [doctorId]);
+        res.json(rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to fetch patients" });
+    }
+});
+
+// Get Doctor Profile
+app.get('/doctor/profile/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT id, name, email, specialization, location, hospital, contact_no, gender FROM doctors WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ error: "Doctor not found" });
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch profile" });
+    }
+});
+
+// Update Doctor Profile
+app.put('/doctor/profile/:id', async (req, res) => {
+    try {
+        const { name, specialization, location, hospital, contact_no, gender } = req.body;
+        const query = `UPDATE doctors SET name=?, specialization=?, location=?, hospital=?, contact_no=?, gender=? WHERE id=?`;
+        await pool.execute(query, [name, specialization, location, hospital, contact_no, gender, req.params.id]);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to update profile" });
+    }
+});
+
+app.post('/consult/request', async (req, res) => {
+    try {
+        const { user_mobile, data_id } = req.body;
+        const query = `INSERT INTO consultation_requests (user_mobile, data_id) VALUES (?, ?)`;
+        const [result] = await pool.execute(query, [user_mobile, data_id]);
+        
+        // Check if doctors are online (simple check)
+        // In a real app, we'd check the socket 'doctors' room size more robustly
+        // For now, we rely on the socket 'no_doctors_available' event for immediate feedback
+        // But we can also send email here if we want to be async
+        
+        res.json({ success: true, consultationId: result.insertId });
+    } catch (error) {
+        res.status(500).json({ error: "Request failed" });
+    }
+});
+
+app.post('/consult/email-admin', async (req, res) => {
+    try {
+        const { patientDetails, report } = req.body;
+        
+        const mailOptions = {
+            from: process.env.SENDER_EMAIL,
+            to: process.env.ADMIN_EMAIL, // Send to admin
+            subject: 'Missed Consultation Request',
+            text: `A patient requested consultation but no doctors were available.\n\nPatient: ${JSON.stringify(patientDetails)}\n\nReport: ${report}`
+        };
+
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Email error:", error);
+        res.status(500).json({ error: "Failed to send email" });
+    }
+});
+
+app.post('/doctor/response', async (req, res) => {
+    try {
+        const { consultation_id, doctor_notes, prescription } = req.body;
+        const query = `INSERT INTO doctor_responses (consultation_id, doctor_notes, prescription) VALUES (?, ?, ?)`;
+        await pool.execute(query, [consultation_id, doctor_notes, prescription]);
+        
+        // Update request status
+        await pool.execute('UPDATE consultation_requests SET status = "completed" WHERE id = ?', [consultation_id]);
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to save response" });
+    }
 });
