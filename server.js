@@ -5,7 +5,7 @@ const mysql = require('mysql2/promise');
 const http = require('http');
 const { Server } = require('socket.io');
 const nodemailer = require('nodemailer');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const app = express();
