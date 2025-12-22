@@ -114,9 +114,13 @@ app.get('/history/:mobile', async (req, res) => {
         // Fetch Health Data & AI Responses
         const query = `
             SELECT d.id, d.created_at, d.symptoms, d.height, d.weight, d.temperature, d.spo2, d.heartrate, 
-                   a.response_text 
+                   a.response_text,
+                   dr.doctor_notes, dr.prescription, doc.name as doctor_name
             FROM data d 
             LEFT JOIN ai_response a ON d.id = a.data_id 
+            LEFT JOIN consultation_requests cr ON d.id = cr.data_id
+            LEFT JOIN doctor_responses dr ON cr.id = dr.consultation_id
+            LEFT JOIN doctors doc ON cr.doctor_id = doc.id
             WHERE d.user_mobile = ? 
             ORDER BY d.created_at DESC
         `;
@@ -244,8 +248,21 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('accept_request', (data) => {
-        // data: { patientSocketId, doctorId }
+    socket.on('accept_request', async (data) => {
+        // data: { patientSocketId, doctorId, consultationId }
+        
+        // Update DB
+        if (data.consultationId && data.doctorId) {
+            try {
+                await pool.execute(
+                    'UPDATE consultation_requests SET doctor_id = ?, status = "accepted" WHERE id = ?', 
+                    [data.doctorId, data.consultationId]
+                );
+            } catch (e) {
+                console.error('Error updating consultation request:', e);
+            }
+        }
+
         io.to(data.patientSocketId).emit('request_accepted', { doctorId: data.doctorId, doctorSocketId: socket.id });
         
         // Notify other doctors to remove this request from their queue
@@ -263,6 +280,13 @@ io.on('connection', (socket) => {
 
     socket.on('candidate', (data) => {
         io.to(data.target).emit('candidate', { candidate: data.candidate, sender: socket.id });
+    });
+
+    socket.on('consultation_completed', (data) => {
+        io.to(data.target).emit('consultation_completed', { 
+            notes: data.notes, 
+            prescription: data.prescription 
+        });
     });
 
     socket.on('disconnect', () => {

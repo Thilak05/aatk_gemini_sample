@@ -477,3 +477,63 @@ textarea {
     display: none;
 }
 
+
+/* Fix for Controls Panel Visibility */
+.controls-panel {
+    background: white;
+    border-top: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    /* Ensure it doesn't get pushed off screen */
+    flex-shrink: 0; 
+}
+
+.consultation-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto; /* Allow scrolling if content is too tall */
+}
+
+.video-stage {
+    flex: 1; /* Take remaining space */
+    min-height: 300px; /* Ensure video is always visible */
+    transition: all 0.3s ease;
+}
+
+/* Full Screen Mode */
+.video-stage.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    border-radius: 0;
+}
+
+.video-stage.fullscreen #localVideo {
+    bottom: 30px;
+    right: 30px;
+    width: 320px;
+    height: 240px;
+}
+
+.video-stage.fullscreen .video-controls {
+    bottom: 50px;
+}
+
+.notes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .notes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

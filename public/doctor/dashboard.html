@@ -139,6 +139,9 @@
                                     <button class="control-btn" onclick="toggleVideo()" title="Toggle Video">
                                         <i class="fa-solid fa-video"></i>
                                     </button>
+                                    <button class="control-btn" onclick="toggleFullScreen()" title="Full Screen">
+                                        <i class="fa-solid fa-expand"></i>
+                                    </button>
                                     <button class="control-btn danger" onclick="endConsultation()" title="End Call">
                                         <i class="fa-solid fa-phone-slash"></i>
                                     </button>
@@ -146,6 +149,9 @@
                             </div>
 
                             <div class="controls-panel hidden" id="controlsPanel">
+                                <div class="patient-info-bar" id="patientInfoBar" style="margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color); display: flex; gap: 20px; flex-wrap: wrap;">
+                                    <!-- Populated by JS -->
+                                </div>
                                 <div class="notes-grid">
                                     <div>
                                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Patient Symptoms</label>
@@ -155,10 +161,14 @@
                                     </div>
                                     <div>
                                         <label style="display: block; margin-bottom: 8px; font-weight: 500;">Doctor's Notes</label>
-                                        <textarea id="consultationNotes" placeholder="Enter diagnosis and prescription..."></textarea>
+                                        <textarea id="consultationNotes" placeholder="Enter diagnosis and notes..." style="height: 80px;"></textarea>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Prescription</label>
+                                        <textarea id="consultationPrescription" placeholder="Enter prescription..." style="height: 80px;"></textarea>
                                     </div>
                                 </div>
-                                <button class="action-btn" onclick="endConsultation()">
+                                <button class="action-btn" onclick="completeConsultation()">
                                     <i class="fa-solid fa-check"></i> Complete Consultation
                                 </button>
                             </div>
@@ -236,6 +246,15 @@
                 </div>
                 <button type="submit" class="btn-primary">Save Changes</button>
             </form>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="width: 80%; max-width: 800px;">
+            <span class="close" onclick="closeHistoryModal()">&times;</span>
+            <h2>Patient Report</h2>
+            <div id="historyContent"></div>
         </div>
     </div>
 
@@ -344,17 +363,20 @@
                 }
 
                 patients.forEach(p => {
-                    const row = `
-                        <tr>
-                            <td>${new Date(p.created_at).toLocaleDateString()}</td>
-                            <td>${p.patient_name || 'Anonymous'}</td>
-                            <td>${p.age || '-'} / ${p.gender || '-'}</td>
-                            <td>${p.symptoms ? p.symptoms.substring(0, 30) + '...' : '-'}</td>
-                            <td>${p.diagnosis || '-'}</td>
-                            <td>${p.prescription || '-'}</td>
-                        </tr>
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                        <td>${p.patient_name || 'Anonymous'}</td>
+                        <td>${p.age || '-'} / ${p.gender || '-'}</td>
+                        <td>${p.symptoms ? p.symptoms.substring(0, 30) + '...' : '-'}</td>
+                        <td>
+                            <button class="btn-primary" style="padding: 4px 8px; font-size: 0.8rem; width: auto;" onclick="showHistory('${encodeURIComponent(JSON.stringify(p))}')">
+                                View Report
+                            </button>
+                        </td>
+                        <td>${p.prescription || '-'}</td>
                     `;
-                    tbody.innerHTML += row;
+                    tbody.appendChild(row);
                 });
             } catch(e) {
                 console.error(e);
@@ -367,6 +389,8 @@
 
         let peerConnection;
         let currentPatientId = null;
+        let currentConsultationId = null;
+        let currentPatientData = null;
         const config = {
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         };
@@ -443,13 +467,16 @@
             const card = document.createElement('div');
             card.className = 'request-card';
             card.id = `req-${data.socketId}`;
+            // Store full data in dataset for retrieval
+            card.dataset.fullData = JSON.stringify(data);
+            
             card.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div>
                         <h4>${data.patientName || 'Anonymous Patient'}</h4>
                         <p>${data.symptoms.substring(0, 50)}...</p>
                     </div>
-                    <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; width: auto;" onclick="acceptRequest('${data.socketId}', '${data.symptoms.replace(/'/g, "\'")}')">
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem; width: auto;" onclick="acceptRequest('${data.socketId}')">
                         Accept
                     </button>
                 </div>
@@ -463,26 +490,90 @@
             document.getElementById('queueCount').textContent = count;
         }
 
-        window.acceptRequest = function(socketId, symptoms) {
+        window.acceptRequest = function(socketId) {
             if (currentPatientId) {
                 if(!confirm('End current consultation to accept new one?')) return;
                 endConsultation();
             }
 
+            const card = document.getElementById(`req-${socketId}`);
+            if(!card) return;
+            
+            const data = JSON.parse(card.dataset.fullData);
             currentPatientId = socketId;
-            document.getElementById('patientSymptoms').textContent = symptoms;
+            currentConsultationId = data.consultationId;
+            currentPatientData = data;
+
+            // Populate Patient Info
+            document.getElementById('patientSymptoms').textContent = data.symptoms;
+            
+            const infoBar = document.getElementById('patientInfoBar');
+            const vitals = data.vitals || {};
+            
+            infoBar.innerHTML = `
+                <div><strong>Name:</strong> ${data.patientName}</div>
+                <div><strong>Age/Gender:</strong> ${data.age || '-'} / ${data.gender || '-'}</div>
+                <div><strong>Height:</strong> ${vitals.height || '-'} cm</div>
+                <div><strong>Weight:</strong> ${vitals.weight || '-'} kg</div>
+                <div><strong>Temp:</strong> ${vitals.temperature || '-'} °F</div>
+                <div><strong>SpO2:</strong> ${vitals.spo2 || '-'}%</div>
+                <div><strong>HR:</strong> ${vitals.heartrate || '-'} bpm</div>
+            `;
             
             document.querySelectorAll('.request-card').forEach(c => c.classList.remove('active'));
-            const card = document.getElementById(`req-${socketId}`);
-            if(card) card.classList.add('active');
+            card.classList.add('active');
 
-            socket.emit('accept_request', { patientSocketId: socketId, doctorId: doctorId });
+            socket.emit('accept_request', { 
+                patientSocketId: socketId, 
+                doctorId: doctorId,
+                consultationId: currentConsultationId 
+            });
             
             document.getElementById('videoPlaceholder').innerHTML = `
                 <i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                 <h3>Connecting...</h3>
                 <p>Waiting for patient connection</p>
             `;
+        };
+
+        window.completeConsultation = async function() {
+            if (!currentConsultationId) {
+                endConsultation();
+                return;
+            }
+
+            const notes = document.getElementById('consultationNotes').value;
+            const prescription = document.getElementById('consultationPrescription').value;
+            
+            if (!notes.trim() && !prescription.trim()) {
+                if(!confirm('Complete consultation without notes or prescription?')) return;
+            }
+
+            try {
+                // Save to DB
+                await fetch('/doctor/response', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        consultation_id: currentConsultationId,
+                        doctor_notes: notes,
+                        prescription: prescription
+                    })
+                });
+
+                // Notify Patient via Socket
+                socket.emit('consultation_completed', { 
+                    target: currentPatientId, 
+                    notes: notes,
+                    prescription: prescription 
+                });
+
+            } catch (e) {
+                console.error('Error saving consultation:', e);
+                alert('Error saving consultation data, but ending call.');
+            }
+
+            endConsultation();
         };
 
         window.toggleMute = function() {
@@ -539,8 +630,65 @@
             }
 
             currentPatientId = null;
+            currentConsultationId = null;
+            currentPatientData = null;
             document.getElementById('consultationNotes').value = '';
+            document.getElementById('consultationPrescription').value = '';
             document.getElementById('patientSymptoms').textContent = '--';
+            document.getElementById('patientInfoBar').innerHTML = '';
+        };
+
+        window.toggleFullScreen = function() {
+            const videoStage = document.getElementById('videoContainer');
+            videoStage.classList.toggle('fullscreen');
+            const btn = document.querySelector('button[onclick="toggleFullScreen()"]');
+            const isFullscreen = videoStage.classList.contains('fullscreen');
+            btn.innerHTML = isFullscreen ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>';
+        };
+
+        window.showHistory = function(patientDataStr) {
+            const data = JSON.parse(decodeURIComponent(patientDataStr));
+            const modal = document.getElementById('historyModal');
+            const content = document.getElementById('historyContent');
+            
+            const diagnosisHtml = data.diagnosis ? data.diagnosis.replace(/\n/g, '<br>') : 'No diagnosis available.';
+            
+            content.innerHTML = `
+                <div class="grid-2" style="margin-bottom: 20px;">
+                    <div>
+                        <h3>Patient Details</h3>
+                        <p><strong>Name:</strong> ${data.patient_name}</p>
+                        <p><strong>Age/Gender:</strong> ${data.age} / ${data.gender}</p>
+                        <p><strong>Date:</strong> ${new Date(data.created_at).toLocaleString()}</p>
+                    </div>
+                    <div>
+                        <h3>Vitals & Symptoms</h3>
+                        <p><strong>Symptoms:</strong> ${data.symptoms}</p>
+                    </div>
+                </div>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin-top: 0; color: #2563eb;">AI Analysis & Diagnosis</h3>
+                    <div style="line-height: 1.6;">${diagnosisHtml}</div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3>Doctor's Notes & Prescription</h3>
+                    <p><strong>Notes:</strong> ${data.doctor_notes || '-'}</p>
+                    <p><strong>Prescription:</strong> ${data.prescription || '-'}</p>
+                </div>
+            `;
+            
+            modal.style.display = "block";
+        };
+
+        window.closeHistoryModal = function() {
+            document.getElementById('historyModal').style.display = "none";
+        };
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById('historyModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         };
     </script>
 </body>

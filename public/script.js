@@ -293,6 +293,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="history-date"><i class="fa-regular fa-calendar"></i> ${formatDate(item.created_at)}</span>
                         <span class="history-symptoms">Symptoms: ${symptomsDisplay}</span>
                         <div class="history-diagnosis">${marked.parse(item.response_text || '')}</div>
+                        ${item.doctor_notes || item.prescription ? `
+                            <div class="doctor-feedback" style="margin-top: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+                                <h4 style="margin: 0 0 10px 0; color: #0369a1; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-user-doctor"></i> Doctor's Report ${item.doctor_name ? `(Dr. ${item.doctor_name})` : ''}
+                                </h4>
+                                ${item.doctor_notes ? `<p><strong>Notes:</strong> ${item.doctor_notes}</p>` : ''}
+                                ${item.prescription ? `<p><strong>Prescription:</strong> ${item.prescription}</p>` : ''}
+                            </div>
+                        ` : ''}
                     `;
                     historyList.appendChild(historyItem);
                 });
@@ -443,7 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     user_mobile: userMobile,
                     patientName: userName,
                     symptoms: currentSymptoms.join(', '),
-                    consultationId: data.consultationId
+                    consultationId: data.consultationId,
+                    vitals: collectedVitals,
+                    age: document.getElementById('age').value,
+                    gender: document.getElementById('gender').value
                 });
             } else {
                 alert('Failed to initiate request. Please try again.');
@@ -493,6 +505,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if (peerConnection) {
                 await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             }
+        });
+
+        socket.on('consultation_completed', (data) => {
+            closeVideo();
+            
+            // Show Completion Modal or Update UI
+            const resultCard = document.getElementById('result-card');
+            const output = document.getElementById('output');
+            
+            let completionHtml = `
+                <div style="margin-top: 20px; padding: 20px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+                    <h3 style="color: #166534; margin-top: 0;"><i class="fa-solid fa-user-doctor"></i> Doctor's Diagnosis</h3>
+                    <p><strong>Notes:</strong> ${data.notes || 'No notes provided.'}</p>
+                    <p><strong>Prescription:</strong> ${data.prescription || 'No prescription provided.'}</p>
+                </div>
+            `;
+            
+            // Append to existing AI output or replace
+            output.innerHTML += completionHtml;
+            resultCard.classList.remove('hidden');
+            
+            // Scroll to result
+            resultCard.scrollIntoView({ behavior: 'smooth' });
+            
+            alert('Consultation completed. The doctor has updated your report.');
         });
     });
 
