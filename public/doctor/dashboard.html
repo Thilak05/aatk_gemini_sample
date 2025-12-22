@@ -124,13 +124,25 @@
                     <div class="panel">
                         <div class="consultation-wrapper">
                             <div class="video-stage" id="videoContainer">
-                                <div class="placeholder-content" id="videoPlaceholder">
-                                    <i class="fa-solid fa-video-slash"></i>
+                                <div class="waiting-overlay" id="videoPlaceholder">
+                                    <i class="fa-solid fa-video-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                                     <h3>No Active Call</h3>
-                                    <p>Select a patient from the queue to start consultation</p>
+                                    <p style="opacity: 0.7;">Select a patient from the queue to start consultation</p>
                                 </div>
-                                <video id="remoteVideo" autoplay playsinline class="hidden" style="width: 100%; height: 100%; object-fit: cover;"></video>
-                                <video id="localVideo" autoplay playsinline muted class="hidden" style="position: absolute; bottom: 20px; right: 20px; width: 150px; height: 100px; border-radius: 8px; border: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); object-fit: cover;"></video>
+                                <video id="remoteVideo" autoplay playsinline></video>
+                                <video id="localVideo" autoplay playsinline muted></video>
+                                
+                                <div class="video-controls hidden" id="videoControls">
+                                    <button class="control-btn" onclick="toggleMute()" title="Toggle Mute">
+                                        <i class="fa-solid fa-microphone"></i>
+                                    </button>
+                                    <button class="control-btn" onclick="toggleVideo()" title="Toggle Video">
+                                        <i class="fa-solid fa-video"></i>
+                                    </button>
+                                    <button class="control-btn danger" onclick="endConsultation()" title="End Call">
+                                        <i class="fa-solid fa-phone-slash"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="controls-panel hidden" id="controlsPanel">
@@ -377,7 +389,7 @@
         });
 
         socket.on('offer', async (data) => {
-            if (currentPatientId !== data.from) return;
+            if (currentPatientId !== data.sender) return;
             
             peerConnection = new RTCPeerConnection(config);
             
@@ -393,30 +405,29 @@
             peerConnection.ontrack = event => {
                 const remoteVideo = document.getElementById('remoteVideo');
                 remoteVideo.srcObject = event.streams[0];
-                remoteVideo.classList.remove('hidden');
                 document.getElementById('videoPlaceholder').classList.add('hidden');
+                document.getElementById('videoControls').classList.remove('hidden');
             };
 
             const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
-            document.getElementById('localVideo').classList.remove('hidden');
             
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
 
             socket.emit('answer', {
                 target: currentPatientId,
-                answer: answer
+                sdp: answer
             });
             
             document.getElementById('controlsPanel').classList.remove('hidden');
         });
 
         socket.on('candidate', async (data) => {
-            if (currentPatientId !== data.from) return;
+            if (currentPatientId !== data.sender) return;
             try {
                 await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
             } catch (e) {
@@ -468,10 +479,36 @@
             socket.emit('accept_request', { patientSocketId: socketId, doctorId: doctorId });
             
             document.getElementById('videoPlaceholder').innerHTML = `
-                <i class="fa-solid fa-spinner fa-spin"></i>
+                <i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i>
                 <h3>Connecting...</h3>
                 <p>Waiting for patient connection</p>
             `;
+        };
+
+        window.toggleMute = function() {
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo.srcObject) {
+                const audioTrack = localVideo.srcObject.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const btn = document.querySelector('button[onclick="toggleMute()"]');
+                    btn.innerHTML = audioTrack.enabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
+                    btn.classList.toggle('danger', !audioTrack.enabled);
+                }
+            }
+        };
+
+        window.toggleVideo = function() {
+            const localVideo = document.getElementById('localVideo');
+            if (localVideo.srcObject) {
+                const videoTrack = localVideo.srcObject.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    const btn = document.querySelector('button[onclick="toggleVideo()"]');
+                    btn.innerHTML = videoTrack.enabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>';
+                    btn.classList.toggle('danger', !videoTrack.enabled);
+                }
+            }
         };
 
         window.endConsultation = function() {
@@ -486,14 +523,13 @@
                 localVideo.srcObject = null;
             }
 
-            document.getElementById('remoteVideo').classList.add('hidden');
-            document.getElementById('localVideo').classList.add('hidden');
+            document.getElementById('videoControls').classList.add('hidden');
             document.getElementById('controlsPanel').classList.add('hidden');
             document.getElementById('videoPlaceholder').classList.remove('hidden');
             document.getElementById('videoPlaceholder').innerHTML = `
-                <i class="fa-solid fa-video-slash"></i>
+                <i class="fa-solid fa-video-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                 <h3>No Active Call</h3>
-                <p>Select a patient from the queue to start consultation</p>
+                <p style="opacity: 0.7;">Select a patient from the queue to start consultation</p>
             `;
 
             if (currentPatientId) {

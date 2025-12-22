@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoModal = document.getElementById('video-modal');
     const closeVideoBtn = document.getElementById('close-video');
     const waitingScreen = document.getElementById('waiting-screen');
-    const videoScreen = document.getElementById('video-screen');
+    const patientControls = document.getElementById('patient-controls');
     const endCallBtn = document.getElementById('end-call-btn');
     
     let socket = null;
@@ -419,8 +419,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize Socket
         if (!socket) socket = io();
 
-        videoModal.classList.remove('hidden');
-        setTimeout(() => videoModal.classList.add('show'), 10);
+        videoModal.classList.add('show');
+        waitingScreen.classList.remove('hidden');
+        patientControls.classList.add('hidden');
         
         // Send Request
         const userMobile = localStorage.getItem('user_mobile');
@@ -460,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <i class="fa-solid fa-user-doctor-slash fa-3x" style="color: #ef4444; margin-bottom: 20px;"></i>
                 <h3>No Doctors Available</h3>
                 <p>We have sent your report to our admin team. A doctor will contact you shortly.</p>
-                <button onclick="closeVideo()" class="secondary-btn" style="margin-top: 20px;">Close</button>
+                <button onclick="closeVideo()" class="control-btn" style="margin-top: 20px; width: auto; padding: 0 20px; border-radius: 8px;">Close</button>
             `;
             
             // Trigger Email to Admin
@@ -475,19 +476,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         socket.on('request_accepted', (data) => {
-            waitingScreen.classList.add('hidden');
-            videoScreen.classList.remove('hidden');
             currentDoctorSocket = data.doctorSocketId;
             startPatientCall();
         });
 
         // WebRTC Handlers
-        socket.on('offer', async (data) => {
-            if (!peerConnection) startPatientCall();
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit('answer', { target: data.sender, sdp: answer });
+        socket.on('answer', async (data) => {
+            if (peerConnection) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                waitingScreen.classList.add('hidden');
+                patientControls.classList.remove('hidden');
+            }
         });
 
         socket.on('candidate', async (data) => {
@@ -516,14 +515,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 socket.emit('candidate', { target: currentDoctorSocket, candidate: event.candidate });
             }
         };
+
+        // Create and send offer
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        socket.emit('offer', { target: currentDoctorSocket, sdp: offer });
     }
+
+    window.togglePatientMute = function() {
+        const localVideo = document.getElementById('patient-local-video');
+        if (localVideo.srcObject) {
+            const audioTrack = localVideo.srcObject.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                const btn = document.querySelector('button[onclick="togglePatientMute()"]');
+                btn.innerHTML = audioTrack.enabled ? '<i class="fa-solid fa-microphone"></i>' : '<i class="fa-solid fa-microphone-slash"></i>';
+                btn.classList.toggle('danger', !audioTrack.enabled);
+            }
+        }
+    };
+
+    window.togglePatientVideo = function() {
+        const localVideo = document.getElementById('patient-local-video');
+        if (localVideo.srcObject) {
+            const videoTrack = localVideo.srcObject.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                const btn = document.querySelector('button[onclick="togglePatientVideo()"]');
+                btn.innerHTML = videoTrack.enabled ? '<i class="fa-solid fa-video"></i>' : '<i class="fa-solid fa-video-slash"></i>';
+                btn.classList.toggle('danger', !videoTrack.enabled);
+            }
+        }
+    };
 
     function closeVideo() {
         videoModal.classList.remove('show');
-        setTimeout(() => videoModal.classList.add('hidden'), 300);
-        if (peerConnection) peerConnection.close();
-        // Reload to reset socket state cleanly
-        // location.reload(); 
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+        const localVideo = document.getElementById('patient-local-video');
+        if (localVideo.srcObject) {
+            localVideo.srcObject.getTracks().forEach(track => track.stop());
+            localVideo.srcObject = null;
+        }
     }
 
     closeVideoBtn.addEventListener('click', closeVideo);
