@@ -391,6 +391,7 @@
         let currentPatientId = null;
         let currentConsultationId = null;
         let currentPatientData = null;
+        let iceCandidateQueue = [];
         const config = {
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         };
@@ -416,6 +417,7 @@
             if (currentPatientId !== data.sender) return;
             
             peerConnection = new RTCPeerConnection(config);
+            iceCandidateQueue = []; // Reset queue
             
             peerConnection.onicecandidate = event => {
                 if (event.candidate) {
@@ -439,6 +441,15 @@
             localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
             await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            
+            // Process queued candidates
+            while (iceCandidateQueue.length > 0) {
+                const candidate = iceCandidateQueue.shift();
+                try {
+                    await peerConnection.addIceCandidate(candidate);
+                } catch (e) { console.error("Error adding queued candidate", e); }
+            }
+
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
 
@@ -453,7 +464,12 @@
         socket.on('candidate', async (data) => {
             if (currentPatientId !== data.sender) return;
             try {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                const candidate = new RTCIceCandidate(data.candidate);
+                if (peerConnection && peerConnection.remoteDescription) {
+                    await peerConnection.addIceCandidate(candidate);
+                } else {
+                    iceCandidateQueue.push(candidate);
+                }
             } catch (e) {
                 console.error('Error adding received ice candidate', e);
             }

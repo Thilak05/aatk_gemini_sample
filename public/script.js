@@ -423,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let socket = null;
     let peerConnection = null;
     let currentDoctorSocket = null;
+    let iceCandidateQueue = [];
 
     consultBtn.addEventListener('click', async () => {
         // Initialize Socket
@@ -496,6 +497,15 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('answer', async (data) => {
             if (peerConnection) {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                
+                // Process queued candidates
+                while (iceCandidateQueue.length > 0) {
+                    const candidate = iceCandidateQueue.shift();
+                    try {
+                        await peerConnection.addIceCandidate(candidate);
+                    } catch (e) { console.error("Error adding queued candidate", e); }
+                }
+
                 waitingScreen.classList.add('hidden');
                 patientControls.classList.remove('hidden');
             }
@@ -503,7 +513,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('candidate', async (data) => {
             if (peerConnection) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                const candidate = new RTCIceCandidate(data.candidate);
+                if (peerConnection.remoteDescription) {
+                    try {
+                        await peerConnection.addIceCandidate(candidate);
+                    } catch (e) { console.error("Error adding candidate", e); }
+                } else {
+                    iceCandidateQueue.push(candidate);
+                }
             }
         });
 
@@ -534,12 +551,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function startPatientCall() {
+        // HTTPS Check
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert("Video calls require HTTPS. Please reload this page with https://");
+            return;
+        }
+
         const localVideo = document.getElementById('patient-local-video');
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localVideo.srcObject = stream;
 
         const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         peerConnection = new RTCPeerConnection(configuration);
+        iceCandidateQueue = []; // Reset queue
 
         stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
