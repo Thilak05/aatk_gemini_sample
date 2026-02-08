@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Shared Socket Instance
+    const socket = io();
+
     // --- Elements ---
     const vitalsSection = document.getElementById('vitals-section');
     const symptomsSection = document.getElementById('symptoms-section');
@@ -70,6 +73,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadUserData();
+
+    // --- Sensor Integration ---
+    const connectSensorBtn = document.getElementById('connect-sensor-btn');
+    const sensorStatusDiv = document.getElementById('sensor-status');
+    const sensorIdInput = document.getElementById('sensor-device-id');
+
+    if (connectSensorBtn) {
+        connectSensorBtn.addEventListener('click', () => {
+            const deviceId = sensorIdInput.value.trim();
+            if(!deviceId) return alert("Please enter a Device ID");
+
+            socket.emit('join_sensor_room', deviceId);
+            
+            sensorStatusDiv.innerHTML = `<span style="color: #ca8a04;"><i class="fa-solid fa-spinner fa-spin"></i> Waiting for data from ${deviceId}...</span>`;
+            
+            // Disable button to prevent spamming
+            connectSensorBtn.disabled = true;
+            connectSensorBtn.textContent = "Connecting...";
+        });
+    }
+
+    socket.on('vitals_update', (data) => {
+        console.log('Received sensor data:', data);
+        
+        // Update Status
+        sensorStatusDiv.innerHTML = `<span style="color: #16a34a;"><i class="fa-solid fa-circle-check"></i> Connected! Receiving Data...</span>`;
+        connectSensorBtn.textContent = "Connected";
+
+        // Auto-fill fields with animation effect
+        if(data.heartrate > 0) {
+            const hrInput = document.getElementById('heartrate');
+            hrInput.value = data.heartrate;
+            hrInput.style.backgroundColor = '#dcfce7'; // green flash
+            setTimeout(() => hrInput.style.backgroundColor = '', 500);
+        }
+
+        if(data.spo2 > 0) {
+            const spo2Input = document.getElementById('spo2');
+            spo2Input.value = data.spo2;
+            spo2Input.style.backgroundColor = '#dcfce7';
+            setTimeout(() => spo2Input.style.backgroundColor = '', 500);
+        }
+        
+        if(data.temperature > 0) {
+            const tempInput = document.getElementById('temperature');
+            // Only update if not manually edited recently? For now just overwrite
+            tempInput.value = data.temperature;
+            tempInput.style.backgroundColor = '#dcfce7';
+            setTimeout(() => tempInput.style.backgroundColor = '', 500);
+        }
+    });
 
     let collectedVitals = {};
     let currentDataId = null;
@@ -420,14 +474,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const patientControls = document.getElementById('patient-controls');
     const endCallBtn = document.getElementById('end-call-btn');
     
-    let socket = null;
+    // socket is now global at the top
     let peerConnection = null;
     let currentDoctorSocket = null;
     let iceCandidateQueue = [];
 
     consultBtn.addEventListener('click', async () => {
-        // Initialize Socket
-        if (!socket) socket = io();
+        // Socket is already initialized
+
 
         videoModal.classList.add('show');
         waitingScreen.classList.remove('hidden');

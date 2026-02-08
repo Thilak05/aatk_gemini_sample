@@ -295,6 +295,25 @@ io.on('connection', (socket) => {
         }
         console.log('User disconnected:', socket.id);
     });
+
+    // Sensor Room Logic
+    socket.on('join_sensor_room', (deviceId) => {
+        const roomName = `device_${deviceId}`;
+        socket.join(roomName);
+        console.log(`Socket ${socket.id} joined sensor room: ${roomName}`);
+    });
+});
+
+// --- Sensor Data Route ---
+app.post('/api/vitals', (req, res) => {
+    const { deviceId, heartrate, spo2, temperature } = req.body;
+    
+    // Broadcast to the specific room
+    const roomName = `device_${deviceId}`;
+    io.to(roomName).emit('vitals_update', { heartrate, spo2, temperature });
+    
+    console.log(`Received vitals for ${deviceId}: HR=${heartrate}, SpO2=${spo2}`);
+    res.json({ success: true });
 });
 
 // --- Doctor Routes ---
