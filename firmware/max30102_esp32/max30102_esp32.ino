@@ -10,7 +10,7 @@
 const char* ssid = "qwerty";
 const char* password = "qAzMlP<306>";
 
-String serverUrl = "http://10.211.78.11:3000/api/vitals";
+String serverUrl = "https://testkiosk.azurewebsites.net/api/vitals";
 String deviceId  = "SENSOR_01";
 
 /* ================= OBJECTS ================= */
